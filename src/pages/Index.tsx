@@ -23,6 +23,9 @@ const HERO_IMG =
 
 const PRICE = 16666;
 
+const ORDER_URL =
+  'https://functions.poehali.dev/0b6023e2-f640-4c89-b886-84910c780c40';
+
 type Totem = {
   id: string;
   name: string;
@@ -123,15 +126,40 @@ export default function Index() {
     );
   };
 
-  const submitOrder = (e: React.FormEvent) => {
+  const [sending, setSending] = useState(false);
+
+  const submitOrder = async (e: React.FormEvent) => {
     e.preventDefault();
-    setCheckoutOpen(false);
-    setCart([]);
-    setForm({ name: '', contact: '', comment: '' });
-    toast({
-      title: 'Заявка отправлена',
-      description: 'Ольга свяжется с вами для подтверждения заказа.',
-    });
+    setSending(true);
+    try {
+      const res = await fetch(ORDER_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: form.name,
+          contact: form.contact,
+          comment: form.comment,
+          total: cartTotal,
+          items: cart.map((i) => ({ name: i.totem.name, qty: i.qty })),
+        }),
+      });
+      if (!res.ok) throw new Error('fail');
+      setCheckoutOpen(false);
+      setCart([]);
+      setForm({ name: '', contact: '', comment: '' });
+      toast({
+        title: 'Заявка отправлена',
+        description: 'Ольга свяжется с вами для подтверждения заказа.',
+      });
+    } catch {
+      toast({
+        title: 'Не удалось отправить',
+        description: 'Попробуйте ещё раз или напишите Ольге напрямую.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSending(false);
+    }
   };
 
   const formatPrice = (n: number) => n.toLocaleString('ru-RU') + ' ₽';
@@ -495,9 +523,10 @@ export default function Index() {
             </div>
             <Button
               type="submit"
+              disabled={sending}
               className="w-full bg-gold text-primary-foreground hover:bg-gold/90 font-marcellus tracking-wide h-12"
             >
-              Отправить заявку
+              {sending ? 'Отправляем…' : 'Отправить заявку'}
             </Button>
           </form>
         </DialogContent>
